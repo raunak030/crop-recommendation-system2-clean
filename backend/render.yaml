@@ -1,0 +1,8 @@
+# Sample Render service definition
+services:
+  - type: web
+    name: crop-recommendation-backend
+    env: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn src.api:app --host 0.0.0.0 --port $PORT"
