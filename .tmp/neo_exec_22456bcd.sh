@@ -1,0 +1,1 @@
+cd /Users/raunakpatel/crop-recommendation-system2-clean && git add -A && git commit -m "chore: cleanup repository and production dependencies" && git push 2>&1

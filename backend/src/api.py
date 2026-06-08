@@ -8,9 +8,6 @@ from typing import Optional
 
 from .ndvi_service import get_ndvi_for
 from .fertilizer_service import recommend_fertilizer
-import requests
-import datetime
-import math
 
 app = FastAPI()
 
