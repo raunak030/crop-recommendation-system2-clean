@@ -7,17 +7,14 @@ region-mean NDVI and acquisition date.
 
 Authentication:
 - For service-account usage set `GOOGLE_APPLICATION_CREDENTIALS` to a
-  service account JSON file path, or `GOOGLE_CREDENTIALS_JSON` to the
-  JSON string itself. The service account must be granted Earth Engine
-  access first (see README).
-- For local development run `earthengine authenticate` instead.
+  service account JSON and grant the account access to Earth Engine
+  (see README). Alternatively run `earthengine authenticate` locally.
 
 This adapter deliberately does NOT fallback to simulated values. If
 GEE is not available or not authenticated, it raises a RuntimeError
 with explicit instructions so the caller (API) can inform the user.
 """
 from typing import Tuple
-import os
 
 try:
     import ee
@@ -30,44 +27,15 @@ import datetime
 class NDVIService:
     def __init__(self):
         if ee is None:
-            raise RuntimeError(
-                "Google Earth Engine Python package not installed. "
-                "Install with `pip install earthengine-api` and follow "
-                "authentication steps in README."
-            )
-
-        # ---------------------------------------------------------------
-        # Render / Production authentication — try these in order:
-        #   1. GOOGLE_APPLICATION_CREDENTIALS → file path (Render Secret File)
-        #   2. GOOGLE_CREDENTIALS_JSON        → raw JSON string (Render env var)
-        #   3. Fallback to default ADC (works locally after `earthengine authenticate`)
-        # ---------------------------------------------------------------
-        credentials_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
-        credentials_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
+            raise RuntimeError("Google Earth Engine Python package not installed. Install with `pip install earthengine-api` and follow authentication steps in README.")
 
         try:
-            if credentials_path:
-                credentials = ee.ServiceAccountCredentials(
-                    None, key_file=credentials_path
-                )
-                ee.Initialize(credentials)
-            elif credentials_json:
-                credentials = ee.ServiceAccountCredentials(
-                    None, key_data=credentials_json
-                )
-                ee.Initialize(credentials)
-            else:
-                # If already initialized this is a no-op.
-                ee.Initialize()
+            # If already initialized this is a no-op, otherwise try to initialize.
+            ee.Initialize()
         except Exception as exc:
+            # Initialization failed; surface a helpful message.
             raise RuntimeError(
-                "Earth Engine initialization failed. "
-                "For Render: set GOOGLE_APPLICATION_CREDENTIALS (Secret File) "
-                "or GOOGLE_CREDENTIALS_JSON (raw JSON string) in your "
-                "environment. Service account must be granted Earth Engine "
-                "access first. "
-                "For local dev: run `earthengine authenticate`. "
-                "Original error: %s" % str(exc)
+                "Earth Engine initialization failed. Ensure you have authenticated (earthengine authenticate) or set up a service account and GOOGLE_APPLICATION_CREDENTIALS as described in README. Original error: %s" % str(exc)
             )
 
     def compute_ndvi(self, lat: float, lon: float, buffer_m: int = 1000, days: int = 30, cloud_pct: int = 20) -> Tuple[float, str, str]:

@@ -1,12 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 import joblib
 import pandas as pd
 from fastapi import HTTPException
 from typing import Optional
 
 from .ndvi_service import get_ndvi_for
+from .fertilizer_service import recommend_fertilizer
 import requests
 import datetime
 import math
@@ -50,6 +51,8 @@ app.add_middleware(
     allow_origins=[
         "http://127.0.0.1:3000",
         "http://localhost:3000",
+        "https://crop-recommendation-system2-clean.onrender.com",
+        "https://*.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -70,6 +73,92 @@ class CropInput(BaseModel):
     soil_type: str
     lat: Optional[float] = None
     lon: Optional[float] = None
+
+    @field_validator("N")
+    @classmethod
+    def validate_n(cls, v):
+        if not (0 <= v <= 200):
+            raise ValueError(f"N must be between 0 and 200, got {v}")
+        return v
+
+    @field_validator("P")
+    @classmethod
+    def validate_p(cls, v):
+        if not (0 <= v <= 200):
+            raise ValueError(f"P must be between 0 and 200, got {v}")
+        return v
+
+    @field_validator("K")
+    @classmethod
+    def validate_k(cls, v):
+        if not (0 <= v <= 200):
+            raise ValueError(f"K must be between 0 and 200, got {v}")
+        return v
+
+    @field_validator("temperature")
+    @classmethod
+    def validate_temperature(cls, v):
+        if not (-10 <= v <= 50):
+            raise ValueError(f"Temperature must be between -10 and 50°C, got {v}")
+        return v
+
+    @field_validator("humidity")
+    @classmethod
+    def validate_humidity(cls, v):
+        if not (0 <= v <= 100):
+            raise ValueError(f"Humidity must be between 0 and 100%, got {v}")
+        return v
+
+    @field_validator("ph")
+    @classmethod
+    def validate_ph(cls, v):
+        if not (0 <= v <= 14):
+            raise ValueError(f"pH must be between 0 and 14, got {v}")
+        return v
+
+    @field_validator("rainfall")
+    @classmethod
+    def validate_rainfall(cls, v):
+        if not (0 <= v <= 5000):
+            raise ValueError(f"Rainfall must be between 0 and 5000 mm, got {v}")
+        return v
+
+    @field_validator("soil_type")
+    @classmethod
+    def validate_soil_type(cls, v):
+        valid_soils = ["Alluvial", "Black", "Red", "Laterite", "Clay", "Sandy", "Loamy"]
+        if v not in valid_soils:
+            raise ValueError(f"Soil type must be one of {valid_soils}, got '{v}'")
+        return v
+
+class FertilizerInput(BaseModel):
+    """Input schema for fertilizer recommendation endpoint."""
+    crop: str
+    N: float
+    P: float
+    K: float
+
+    @field_validator("N")
+    @classmethod
+    def validate_n(cls, v):
+        if not (0 <= v <= 200):
+            raise ValueError(f"N must be between 0 and 200, got {v}")
+        return v
+
+    @field_validator("P")
+    @classmethod
+    def validate_p(cls, v):
+        if not (0 <= v <= 200):
+            raise ValueError(f"P must be between 0 and 200, got {v}")
+        return v
+
+    @field_validator("K")
+    @classmethod
+    def validate_k(cls, v):
+        if not (0 <= v <= 200):
+            raise ValueError(f"K must be between 0 and 200, got {v}")
+        return v
+
 
 @app.get("/")
 def home():
@@ -224,3 +313,34 @@ def predict(data: CropInput):
         },
         "explanation": " ".join(explanation),
     }
+
+# === Versioned API routes (/api/v1/*) ===
+
+@app.get("/api/v1/ndvi")
+def get_ndvi_v1(lat: float, lon: float):
+    """API v1: Compute NDVI using Google Earth Engine."""
+    # Reuse the same logic as /ndvi
+    return get_ndvi(lat, lon)
+
+
+@app.post("/api/v1/predict")
+def predict_v1(data: CropInput):
+    """API v1: Get crop recommendation with weighted fusion."""
+    # Reuse the same logic as /predict
+    return predict(data)
+
+
+@app.post("/api/v1/fertilizer")
+def fertilizer_recommendation(data: FertilizerInput):
+    """API v1: Get fertilizer recommendation based on crop and NPK levels.
+
+    Compares input soil NPK values to the target crop's optimal requirements
+    and recommends a fertilizer to address any deficits.
+    """
+    result = recommend_fertilizer(
+        crop=data.crop,
+        N=data.N,
+        P=data.P,
+        K=data.K,
+    )
+    return result
