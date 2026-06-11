@@ -11,6 +11,19 @@ from .fertilizer_service import recommend_fertilizer
 
 app = FastAPI()
 
+# CORS middleware MUST be registered before routes
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://127.0.0.1:3000",
+        "http://localhost:3000",
+        "https://crop-recommendation-system2-clean.onrender.com",
+        "https://crop-recommendation-system2-clean.vercel.app",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/ndvi")
@@ -43,19 +56,6 @@ def get_ndvi(lat: float, lon: float):
         raise HTTPException(status_code=501, detail=str(rte))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"NDVI processing failed: {e}")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://127.0.0.1:3000",
-        "http://localhost:3000",
-        "https://crop-recommendation-system2-clean.onrender.com",
-        "https://*.vercel.app",
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 model = joblib.load('models/crop_model.pkl')
 
 class CropInput(BaseModel):
