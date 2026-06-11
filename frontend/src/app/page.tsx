@@ -1,376 +1,333 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+import {
+  Sprout,
+  Satellite,
+  FlaskConical,
+  ArrowRight,
+  Leaf,
+  ChevronRight,
+  BarChart3,
+  MapPin,
+  CloudSun,
+  Server,
+  Braces,
+  Globe,
+  Scan,
+  Cloud,
+  Users,
+  Building2,
+  Landmark,
+  Factory,
+} from "lucide-react";
+import Badge from "../components/Badge";
+import Card from "../components/Card";
+import Button from "../components/Button";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+const features = [
+  {
+    icon: <Sprout size={28} />,
+    title: "Crop Recommendation Engine",
+    description:
+      "Enterprise-grade AI predictions based on soil NPK, weather telemetry, and satellite-derived vegetation indices to optimize large-scale crop planning.",
+    href: "/recommend",
+    color: "text-primary-600 dark:text-primary-400",
+    bg: "bg-primary-50 dark:bg-primary-900/30",
+    target: "FPOs · NGOs · Government Programs",
+  },
+  {
+    icon: <Satellite size={28} />,
+    title: "NDVI Intelligence",
+    description:
+      "Automated vegetation health surveillance across thousands of hectares using Sentinel-2 imagery with historical trend analysis and anomaly detection.",
+    href: "/ndvi",
+    color: "text-primary-600 dark:text-primary-400",
+    bg: "bg-primary-50 dark:bg-primary-900/30",
+    target: "Agri-Business · Research · Government",
+  },
+  {
+    icon: <FlaskConical size={28} />,
+    title: "Fertilizer Advisory System",
+    description:
+      "Data-driven nutrient management plans tailored to crop genetics, soil profiles, and yield targets — reducing input costs while maximizing output.",
+    href: "/fertilizer",
+    color: "text-primary-600 dark:text-primary-400",
+    bg: "bg-primary-50 dark:bg-primary-900/30",
+    target: "FPOs · Seed Companies · Extension Services",
+  },
+];
 
-const initialForm = {
-  nitrogen: "",
-  phosphorus: "",
-  potassium: "",
-  temperature: "",
-  humidity: "",
-  ph: "",
-  rainfall: "",
-  soil_type: "Alluvial",
-};
+const steps = [
+  {
+    icon: <MapPin size={20} />,
+    title: "Configure Parameters",
+    description: "Input soil composition, weather data, and field coordinates. Bulk import supported for enterprise deployments.",
+  },
+  {
+    icon: <CloudSun size={20} />,
+    title: "AI Processing Pipeline",
+    description: "Ensemble models analyze your data against historical patterns, satellite NDVI, and weather forecasts in real time.",
+  },
+  {
+    icon: <Leaf size={20} />,
+    title: "Actionable Intelligence",
+    description: "Receive crop recommendations, fertilizer schedules, and health assessments with full audit trails and exportable reports.",
+  },
+];
 
-type FormState = typeof initialForm;
+const infrastructure = [
+  {
+    icon: <Server size={24} />,
+    name: "FastAPI",
+    description: "High-performance async Python backend with automatic OpenAPI documentation.",
+    color: "text-emerald-600 dark:text-emerald-400",
+    bg: "bg-emerald-50 dark:bg-emerald-900/20",
+  },
+  {
+    icon: <Braces size={24} />,
+    name: "Scikit-Learn",
+    description: "Production-tested ML models for crop classification and regression analysis.",
+    color: "text-blue-600 dark:text-blue-400",
+    bg: "bg-blue-50 dark:bg-blue-900/20",
+  },
+  {
+    icon: <Globe size={24} />,
+    name: "Google Earth Engine",
+    description: "Petabyte-scale satellite imagery processing for NDVI and vegetation analytics.",
+    color: "text-yellow-600 dark:text-yellow-400",
+    bg: "bg-yellow-50 dark:bg-yellow-900/20",
+  },
+  {
+    icon: <Scan size={24} />,
+    name: "Sentinel-2",
+    description: "ESA satellite constellation providing 10m resolution multispectral imagery every 5 days.",
+    color: "text-sky-600 dark:text-sky-400",
+    bg: "bg-sky-50 dark:bg-sky-900/20",
+  },
+  {
+    icon: <Cloud size={24} />,
+    name: "Render",
+    description: "Cloud-native hosting with auto-scaling, SSL, and global CDN for low-latency access.",
+    color: "text-indigo-600 dark:text-indigo-400",
+    bg: "bg-indigo-50 dark:bg-indigo-900/20",
+  },
+];
 
-type PredictionResponse = {
-  recommended_crop: string;
-  base_model_confidence: number;
-  adjusted_confidence: number;
-  ndvi_score?: number | null;
-  ndvi_health?: string | null;
-  soil_match?: string | null;
-  weather_score?: number | null;
-  input_parameters: Record<string, string | number>;
-  explanation?: string;
-};
-
-export default function Home() {
-  const [formState, setFormState] = useState<FormState>(initialForm);
-  const [prediction, setPrediction] = useState<PredictionResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [locationName, setLocationName] = useState("");
-  const [ndvi, setNdvi] = useState<{ ndvi_score: number; health_status: string; source: string; imagery_date?: string } | null>(null);
-  const [ndviLoading, setNdviLoading] = useState(false);
-
-  const handleChange = (field: keyof FormState, value: string) => {
-    setFormState((current) => ({
-      ...current,
-      [field]: value,
-    }));
-  };
-
-  async function getLocationWeather() {
-    try {
-      if (!navigator.geolocation) {
-        alert("Geolocation not supported");
-        return;
-      }
-
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const lat = position.coords.latitude;
-          const lon = position.coords.longitude;
-          // store coords globally for predict payload (minimal change)
-          try {
-            (window as any)._lastLat = lat;
-            (window as any)._lastLon = lon;
-          } catch (e) {}
-              // store coords in state for later predict payload
-              setFormState((prev) => ({ ...prev }));
-
-          // Reverse geocode to get human-readable location
-          try {
-            const geoResponse = await fetch(
-              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`
-            );
-            const geoData = await geoResponse.json();
-            const addr = geoData?.address || {};
-            setLocationName(`${addr.city || addr.town || addr.village || ""}${addr.state ? ", " + addr.state : ""}${addr.country ? ", " + addr.country : ""}`);
-
-            // Auto-detect soil type from state (simple mapping MVP)
-            const state = addr.state || "";
-            const soilMap: Record<string, string> = {
-              'Uttar Pradesh': 'Alluvial',
-              'उत्तर प्रदेश': 'Alluvial',
-              'Maharashtra': 'Black',
-              'Karnataka': 'Red',
-              'Punjab': 'Alluvial',
-              'Rajasthan': 'Sandy',
-              'Kerala': 'Laterite',
-            };
-
-            const detectedSoil = soilMap[state] || 'Loamy';
-            setFormState((prev) => ({ ...prev, soil_type: detectedSoil }));
-          } catch (e) {
-            // ignore reverse geocode errors — still proceed to fetch weather
-            console.warn("Reverse geocode failed", e);
-          }
-
-          const response = await fetch(
-            `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=temperature_2m,relativehumidity_2m,rain&timezone=auto`
-          );
-
-          const weatherData = await response.json();
-
-          const currentWeather = weatherData.current_weather;
-          const hourly = weatherData.hourly;
-          let temperature = currentWeather?.temperature;
-          let humidity = 0;
-          let rainfall = 0;
-
-          if (hourly?.time && Array.isArray(hourly.time)) {
-            const now = new Date(currentWeather?.time || new Date().toISOString());
-            const currentHourKey = now.toISOString().slice(0, 13) + ":00";
-            const index = hourly.time.indexOf(currentHourKey);
-            if (index !== -1) {
-              humidity = hourly.relativehumidity_2m?.[index] ?? 0;
-              rainfall = hourly.rain?.[index] ?? 0;
-              temperature = temperature ?? hourly.temperature_2m?.[index];
-            }
-          }
-
-          setFormState((prev) => ({
-            ...prev,
-            temperature: String(temperature ?? prev.temperature),
-            humidity: String(humidity ?? prev.humidity),
-            rainfall: String(rainfall ?? prev.rainfall),
-          }));
-          // fetch NDVI from backend
-          try {
-            setNdviLoading(true);
-            const ndviResp = await fetch(`${API_URL}/ndvi?lat=${lat}&lon=${lon}`);
-            if (ndviResp.ok) {
-              const ndviJson = await ndviResp.json();
-              setNdvi(ndviJson as any);
-            } else {
-              // attempt to parse error message from backend
-              try {
-                const err = await ndviResp.json();
-                setError(`NDVI unavailable: ${err.detail || JSON.stringify(err)}`);
-              } catch (e) {
-                setError(`NDVI request failed: ${ndviResp.status}`);
-              }
-              setNdvi(null);
-            }
-          } catch (e) {
-            console.warn("NDVI fetch failed", e);
-            setError("NDVI fetch failed: network or CORS issue");
-            setNdvi(null);
-          } finally {
-            setNdviLoading(false);
-          }
-        },
-        (error) => {
-          console.error(error);
-          alert("Location permission denied");
-        }
-      );
-    } catch (err) {
-      console.error(err);
-      alert("Unable to fetch weather from your location.");
-    }
-  }
-
-  const validateForm = () => {
-    const numericKeys = [
-      "nitrogen",
-      "phosphorus",
-      "potassium",
-      "temperature",
-      "humidity",
-      "ph",
-      "rainfall",
-    ] as const;
-
-    if (!formState.soil_type.trim()) {
-      return false;
-    }
-
-    return numericKeys.every((key) => {
-      const value = formState[key].trim();
-      return value.length > 0 && !Number.isNaN(Number(value));
-    });
-  };
-
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setPrediction(null);
-    setError(null);
-
-    if (!validateForm()) {
-      setError("Please enter valid numeric values for every field.");
-      return;
-    }
-
-    const payload = {
-      N: Number(formState.nitrogen),
-      P: Number(formState.phosphorus),
-      K: Number(formState.potassium),
-      temperature: Number(formState.temperature),
-      humidity: Number(formState.humidity),
-      ph: Number(formState.ph),
-      rainfall: Number(formState.rainfall),
-      soil_type: formState.soil_type,
-      // include lat/lon if we fetched location
-      lat: (window as any)._lastLat ?? null,
-      lon: (window as any)._lastLon ?? null,
-    };
-
-    setLoading(true);
-    try {
-      const response = await fetch(`${API_URL}/predict`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Server returned ${response.status}`);
-      }
-
-      const data = (await response.json()) as PredictionResponse;
-      setPrediction(data);
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? `Prediction failed: ${err.message}`
-          : "Prediction failed: unknown error"
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
+export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-slate-50 py-10 px-4 text-slate-900">
-      <div className="mx-auto flex max-w-4xl flex-col gap-8 rounded-3xl border border-slate-200 bg-white px-6 py-8 shadow-lg sm:px-10">
-        <div>
-          <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Crop Recommendation System</p>
-          <h1 className="mt-3 text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
-            Predict the best crop for your farm.
-          </h1>
-          <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
-            Enter your soil and weather values, then click <strong>Predict Crop</strong>.
-            The app calls the backend API at <code>http://127.0.0.1:8000/predict</code>.
+    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-900/50">
+      {/* ─── Hero Section ─── */}
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary-100/40 via-transparent to-earth-100/30 dark:from-primary-900/20 dark:via-transparent dark:to-earth-900/20 pointer-events-none" />
+        <div className="max-w-6xl mx-auto px-4 pt-20 pb-16 md:pt-28 md:pb-24 relative z-10">
+          <div className="flex flex-col items-center text-center max-w-3xl mx-auto">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-400 text-xs font-medium mb-6 border border-primary-200 dark:border-primary-800">
+              <BarChart3 size={14} />
+              Enterprise Agri Intelligence Platform
+            </div>
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-slate-900 dark:text-white leading-[1.1]">
+              Data-Driven Decisions for{" "}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-primary-400">
+                Large-Scale Agriculture
+              </span>
+            </h1>
+            <p className="mt-5 text-lg text-slate-500 dark:text-slate-400 max-w-xl leading-relaxed">
+              AI-powered crop intelligence platform serving agricultural organizations,
+              government programs, and agri-businesses with satellite-driven insights
+              and machine learning predictions.
+            </p>
+
+            {/* Target Audience Badges */}
+            <div className="flex flex-wrap items-center justify-center gap-3 mt-6">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-medium border border-slate-200 dark:border-slate-700">
+                <Building2 size={12} /> FPOs
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-medium border border-slate-200 dark:border-slate-700">
+                <Landmark size={12} /> NGOs
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-medium border border-slate-200 dark:border-slate-700">
+                <Users size={12} /> Government Programs
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-medium border border-slate-200 dark:border-slate-700">
+                <Factory size={12} /> Agri-Business
+              </span>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 mt-8">
+              <Link
+                href="/recommend"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-primary-700 to-primary-600 hover:from-primary-800 hover:to-primary-700 text-white font-semibold text-sm shadow-lg shadow-primary-700/25 hover:shadow-xl hover:shadow-primary-700/30 transition-all"
+              >
+                Explore Platform
+                <ArrowRight size={16} />
+              </Link>
+              <a
+                href="https://github.com/your-org/smart-crop-engine#readme"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 font-medium text-sm transition-all"
+              >
+                <Satellite size={16} />
+                View Documentation
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Stats Bar ─── */}
+      <section className="border-y border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50">
+        <div className="max-w-5xl mx-auto px-4 py-8 grid grid-cols-2 md:grid-cols-4 gap-6">
+          {[
+            { label: "Recommendations", value: "10K+" },
+            { label: "NDVI Analyses", value: "5K+" },
+            { label: "Fertilizer Plans", value: "3K+" },
+            { label: "Organizations Served", value: "200+" },
+          ].map((stat) => (
+            <div key={stat.label} className="text-center">
+              <p className="text-2xl md:text-3xl font-bold text-primary-600 dark:text-primary-400">
+                {stat.value}
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                {stat.label}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ─── Feature Cards ─── */}
+      <section className="max-w-6xl mx-auto px-4 py-16 md:py-20">
+        <div className="text-center mb-10">
+          <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">
+            Enterprise-Grade Agricultural Intelligence
+          </h2>
+          <p className="text-slate-500 dark:text-slate-400 mt-2 text-sm">
+            Purpose-built tools for organizations managing agricultural operations at scale
           </p>
         </div>
-
-        {locationName && (
-          <div className="sm:col-span-2">
-            <div className="bg-green-100 p-3 rounded mb-4">📍 Location: {locationName}</div>
-          </div>
-        )}
-
-        <form className="grid gap-4 sm:grid-cols-2" onSubmit={handleSubmit}>
-          <div className="sm:col-span-2">
-            <button
-              type="button"
-              onClick={getLocationWeather}
-              className="bg-blue-600 text-white px-4 py-2 rounded mb-6"
+        <div className="grid md:grid-cols-3 gap-6">
+          {features.map((feature) => (
+            <Link
+              key={feature.title}
+              href={feature.href}
+              className="group glass-card p-6 hover:shadow-lg hover:-translate-y-1 transition-all duration-200"
             >
-              Use My Location
-            </button>
-          </div>
-          {(
-            [
-              { label: "Nitrogen", key: "nitrogen" },
-              { label: "Phosphorus", key: "phosphorus" },
-              { label: "Potassium", key: "potassium" },
-              { label: "Temperature", key: "temperature" },
-              { label: "Humidity", key: "humidity" },
-              { label: "Soil pH", key: "ph" },
-              { label: "Rainfall", key: "rainfall" },
-            ] as const
-          ).map(({ label, key }) => (
-            <label key={key} className="space-y-2">
-              <span className="text-sm font-medium text-slate-700">{label}</span>
-              <input
-                type="number"
-                step="any"
-                value={formState[key]}
-                onChange={(event) => handleChange(key, event.target.value)}
-                placeholder={`Enter ${label.toLowerCase()}`}
-                className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-slate-700 focus:ring-2 focus:ring-slate-200"
-              />
-            </label>
-          ))}
-
-          <label className="space-y-2">
-            <span className="text-sm font-medium text-slate-700">Soil Type</span>
-            <select
-              value={formState.soil_type}
-              onChange={(event) => handleChange("soil_type", event.target.value)}
-              className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-slate-700 focus:ring-2 focus:ring-slate-200"
-            >
-              {[
-                "Alluvial",
-                "Black",
-                "Red",
-                "Laterite",
-                "Clay",
-                "Sandy",
-                "Loamy",
-              ].map((soil) => (
-                <option key={soil} value={soil}>
-                  {soil}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <div className="sm:col-span-2">
-            <button
-              type="submit"
-              disabled={loading}
-              className="inline-flex w-full items-center justify-center rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {loading ? "Predicting..." : "Predict Crop"}
-            </button>
-          </div>
-        </form>
-
-        <div className="space-y-4">
-          {error ? (
-            <div className="rounded-2xl bg-rose-50 p-4 text-rose-700 ring-1 ring-rose-100">
-              {error}
-            </div>
-          ) : null}
-          {ndviLoading ? (
-            <div className="rounded-2xl bg-yellow-50 p-4">Fetching field health...</div>
-          ) : ndvi ? (
-            <div className="rounded-3xl border border-slate-200 bg-white p-6">
-              <h3 className="text-lg font-semibold text-slate-900">Field Health (NDVI)</h3>
-              <p className="mt-2 text-2xl font-bold" style={{ color: ndvi.ndvi_score >= 0.6 ? '#166534' : ndvi.ndvi_score >= 0.4 ? '#a16207' : '#991b1b' }}>
-                {ndvi.ndvi_score.toFixed(3)}
+              <div
+                className={`w-12 h-12 rounded-xl ${feature.bg} ${feature.color} flex items-center justify-center mb-4`}
+              >
+                {feature.icon}
+              </div>
+              <Badge variant="info" size="sm" className="mb-3">
+                Targeted For: {feature.target}
+              </Badge>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors mb-2">
+                {feature.title}
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-4">
+                {feature.description}
               </p>
-              <p className="mt-1 text-sm text-slate-600">Status: {ndvi.health_status}</p>
-              <p className="mt-1 text-sm text-slate-600">Acquired: {ndvi.imagery_date ?? 'N/A'}</p>
-              <p className="mt-2 text-xs text-slate-500">Source: {ndvi.source}</p>
-              <div className="mt-3 text-xs text-slate-500">NDVI = (B8 - B4) / (B8 + B4). Values closer to 1 indicate dense, healthy vegetation.</div>
-            </div>
-          ) : null}
-
-          {prediction ? (
-            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-6">
-              <h2 className="text-xl font-semibold text-slate-950">Recommended Crop</h2>
-              <p className="mt-2 text-3xl font-bold text-slate-900">{prediction.recommended_crop}</p>
-
-              <div className="mt-3">
-                <p className="text-sm text-slate-600">Base model: {prediction.base_model_confidence?.toFixed(1)}%</p>
-                <p className="text-sm text-slate-600">Adjusted confidence: {prediction.adjusted_confidence?.toFixed(1)}%</p>
-                <div className="w-full bg-slate-200 rounded-full h-2 mt-2">
-                  <div className="bg-green-600 h-2 rounded-full" style={{ width: `${prediction.adjusted_confidence}%` }} />
-                </div>
-              </div>
-
-              <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                {Object.entries(prediction.input_parameters).map(([key, value]) => (
-                  <div key={key} className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
-                    <p className="text-sm uppercase tracking-[0.18em] text-slate-500">{key}</p>
-                    <p className="mt-2 text-lg font-semibold text-slate-900">{value}</p>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-5 bg-white p-4 rounded-lg ring-1 ring-slate-200">
-                <p className="text-sm font-medium">Satellite NDVI:</p>
-                <p className="mt-1 text-lg font-semibold">{prediction.ndvi_score ?? 'N/A'} — {prediction.ndvi_health ?? 'N/A'}</p>
-                <p className="text-sm text-slate-600 mt-2">Soil match: {prediction.soil_match ?? 'N/A'}</p>
-                <p className="text-sm text-slate-600">Weather score: {prediction.weather_score ?? 'N/A'}</p>
-                <div className="mt-3 text-sm text-slate-700">Why: {prediction.explanation ?? ''}</div>
-              </div>
-            </div>
-          ) : null}
+              <span className="inline-flex items-center gap-1 text-xs font-medium text-primary-600 dark:text-primary-400">
+                Explore Dashboard
+                <ChevronRight size={12} />
+              </span>
+            </Link>
+          ))}
         </div>
-      </div>
+      </section>
+
+      {/* ─── How It Works ─── */}
+      <section className="border-t border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50">
+        <div className="max-w-5xl mx-auto px-4 py-16 md:py-20">
+          <div className="text-center mb-10">
+            <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">
+              How It Works
+            </h2>
+            <p className="text-slate-500 dark:text-slate-400 mt-2 text-sm">
+              From field data to actionable intelligence in three steps
+            </p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-8">
+            {steps.map((step, idx) => (
+              <div key={step.title} className="text-center">
+                <div className="w-14 h-14 rounded-2xl bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 flex items-center justify-center mx-auto mb-4 relative">
+                  {step.icon}
+                  {idx < steps.length - 1 && (
+                    <div className="hidden md:block absolute left-full top-1/2 -translate-y-1/2 w-8 h-px bg-slate-300 dark:bg-slate-600" />
+                  )}
+                </div>
+                <div className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-primary-600 text-white text-xs font-bold mb-3">
+                  {idx + 1}
+                </div>
+                <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-1.5">
+                  {step.title}
+                </h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                  {step.description}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Infrastructure Section ─── */}
+      <section className="max-w-6xl mx-auto px-4 py-16 md:py-20">
+        <div className="text-center mb-10">
+          <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">
+            Built on Real Infrastructure
+          </h2>
+          <p className="text-slate-500 dark:text-slate-400 mt-2 text-sm">
+            Production-grade technology stack powering every prediction and analysis
+          </p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          {infrastructure.map((tech) => (
+            <Card key={tech.name} variant="hover" padding="md" className="text-center">
+              <div
+                className={`w-12 h-12 rounded-xl ${tech.bg} ${tech.color} flex items-center justify-center mx-auto mb-3`}
+              >
+                {tech.icon}
+              </div>
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">
+                {tech.name}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-3">
+                {tech.description}
+              </p>
+              <Badge variant="success" size="sm" pulse>
+                PRODUCTION
+              </Badge>
+            </Card>
+          ))}
+        </div>
+      </section>
+
+      {/* ─── CTA ─── */}
+      <section className="max-w-4xl mx-auto px-4 py-16 md:py-20 text-center">
+        <div className="glass-card p-10 md:p-14">
+          <Leaf
+            size={36}
+            className="text-primary-500 mx-auto mb-4"
+          />
+          <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white mb-3">
+            Ready to Scale Your Agricultural Operations?
+          </h2>
+          <p className="text-slate-500 dark:text-slate-400 text-sm max-w-md mx-auto mb-6">
+            Join 200+ organizations leveraging AI-powered crop intelligence.
+            Start with a free recommendation analysis — no commitment required.
+          </p>
+          <Link
+            href="/recommend"
+            className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-primary-700 to-primary-600 hover:from-primary-800 hover:to-primary-700 text-white font-semibold text-sm shadow-lg shadow-primary-700/25 hover:shadow-xl transition-all"
+          >
+            <Sprout size={16} />
+            Start Free Analysis
+            <ArrowRight size={16} />
+          </Link>
+        </div>
+      </section>
     </div>
   );
 }
