@@ -53,18 +53,6 @@ export default function Footer() {
               >
                 Contact
               </Link>
-              <Link
-                href="/"
-                className="text-sm text-slate-500 hover:text-primary-600 dark:text-slate-400 dark:hover:text-primary-400 transition-colors"
-              >
-                Documentation
-              </Link>
-              <Link
-                href="/"
-                className="text-sm text-slate-500 hover:text-primary-600 dark:text-slate-400 dark:hover:text-primary-400 transition-colors"
-              >
-                Privacy
-              </Link>
             </div>
           </div>
 
@@ -93,7 +81,7 @@ export default function Footer() {
             © 2026 Smart Crop Engine. Powered by AI &amp; Satellite Data.
           </p>
           <Link
-            href="https://github.com"
+            href="https://github.com/raunak030/crop-recommendation-system2-clean"
             target="_blank"
             rel="noopener noreferrer"
             className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"

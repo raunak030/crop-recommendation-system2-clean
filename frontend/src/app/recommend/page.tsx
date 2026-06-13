@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import {
   Sprout,
   MapPin,
@@ -9,10 +9,9 @@ import {
   Thermometer,
   CloudRain,
   Beaker,
-  Gauge,
   AlertCircle,
   RefreshCw,
-  CheckCircle2,
+  Info,
 } from "lucide-react";
 import ConfidenceGauge from "../../components/ConfidenceGauge";
 import { SkeletonCard, SkeletonGauge } from "../../components/Skeleton";
@@ -38,15 +37,7 @@ const soilTypes = [
   "Loamy",
 ];
 
-interface CropResult {
-  crop: string;
-  confidence: number;
-  risk: "low" | "medium" | "high";
-  reason: string;
-}
-
 interface PredictionResponse {
-  recommended_crops?: CropResult[];
   recommended_crop?: string;
   base_model_confidence?: number;
   adjusted_confidence?: number;
@@ -79,6 +70,27 @@ export default function RecommendPage() {
   const [locationName, setLocationName] = useState("");
   const [responseTime, setResponseTime] = useState<number | null>(null);
   const startTimeRef = useRef<number>(0);
+
+  // Loading messages
+  const loadingMessages = [
+    "Analyzing soil chemistry...",
+    "Running crop suitability model...",
+    "Checking weather compatibility...",
+    "Evaluating nutrient balance...",
+    "Generating recommendation...",
+  ];
+  const [loadingMsgIndex, setLoadingMsgIndex] = useState(0);
+
+  useEffect(() => {
+    if (state !== "loading") {
+      setLoadingMsgIndex(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setLoadingMsgIndex((prev) => (prev + 1) % loadingMessages.length);
+    }, 2500);
+    return () => clearInterval(interval);
+  }, [state, loadingMessages.length]);
 
   const handleChange = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -210,36 +222,10 @@ export default function RecommendPage() {
     }
   };
 
-  // Build top 3 crops from response
-  const topCrops: CropResult[] = (() => {
-    if (!result) return [];
-    if (result.recommended_crops && result.recommended_crops.length > 0) {
-      return result.recommended_crops.slice(0, 3);
-    }
-    // Fallback: construct from single crop response
-    const crops = [
-      { name: result.recommended_crop || "Rice", conf: result.adjusted_confidence || 85 },
-      { name: result.recommended_crop || "Wheat", conf: 72 },
-      { name: result.recommended_crop || "Maize", conf: 58 },
-    ];
-    return crops
-      .filter((c, i, arr) => arr.findIndex((x) => x.name === c.name) === i)
-      .slice(0, 3)
-      .map((c) => ({
-        crop: c.name,
-        confidence: c.conf,
-        risk: c.conf >= 70 ? "low" : c.conf >= 40 ? "medium" : "high",
-        reason: `Optimal for given soil and weather conditions`,
-      }));
-  })();
-
-  const riskVariant = (risk: "low" | "medium" | "high"): "success" | "warning" | "danger" => {
-    const map: Record<string, "success" | "warning" | "danger"> = {
-      low: "success",
-      medium: "warning",
-      high: "danger",
-    };
-    return map[risk];
+  const getConfidenceLabel = (value: number): { label: string; color: string } => {
+    if (value >= 70) return { label: "High Confidence", color: "text-green-600 dark:text-green-400" };
+    if (value >= 40) return { label: "Moderate Confidence", color: "text-amber-600 dark:text-amber-400" };
+    return { label: "Low Confidence", color: "text-red-600 dark:text-red-400" };
   };
 
   const handleRetry = () => {
@@ -249,8 +235,15 @@ export default function RecommendPage() {
     setResponseTime(null);
   };
 
+  // Use the lower of the two confidences for the overall label
+  const overallConfidence = (() => {
+    const base = result?.base_model_confidence ?? 0;
+    const adj = result?.adjusted_confidence ?? 0;
+    return Math.min(base, adj) > 0 ? Math.min(base, adj) : (base || adj);
+  })();
+
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-900/50">
+    <div className="min-h-screen">
       <div className="max-w-7xl mx-auto px-4 py-6 md:py-8">
         <PageHeader
           overline="Smart Agriculture"
@@ -272,16 +265,29 @@ export default function RecommendPage() {
                   </p>
                 </div>
 
+                {/* Soil Testing Guidance */}
+                <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                  <p className="text-xs text-amber-800 dark:text-amber-300">
+                    <span className="font-semibold">💡 Don&apos;t know your NPK values?</span>{' '}
+                    Visit your nearest <strong>Krishi Vigyan Kendra (KVK)</strong> for free soil testing.
+                  </p>
+                </div>
+
                 {/* GPS Button */}
-                <Button
-                  variant="outline"
-                  fullWidth
-                  onClick={handleGetLocation}
-                  icon={<MapPin size={16} />}
-                  disabled={state === "loading"}
-                >
-                  {locationName ? `📍 ${locationName}` : "📍 Use My Location"}
-                </Button>
+                <div>
+                  <Button
+                    variant="outline"
+                    fullWidth
+                    onClick={handleGetLocation}
+                    icon={<MapPin size={16} />}
+                    disabled={state === "loading"}
+                  >
+                    {locationName ? `📍 ${locationName}` : "📍 Use My Location"}
+                  </Button>
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 text-center">
+                    GPS auto-fills weather data and suggests soil type based on your region.
+                  </p>
+                </div>
 
                 <form onSubmit={handleSubmit} className="space-y-5">
                   {/* NPK Range Sliders */}
@@ -400,6 +406,10 @@ export default function RecommendPage() {
             {/* LOADING STATE */}
             {state === "loading" && (
               <div className="space-y-4 animate-fadeIn">
+                <div className="text-center space-y-1 mb-2">
+                  <p className="text-sm text-slate-500 dark:text-slate-400 animate-pulse">{loadingMessages[loadingMsgIndex]}</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500">Running crop suitability model</p>
+                </div>
                 <div className="flex justify-center">
                   <SkeletonGauge />
                 </div>
@@ -422,140 +432,141 @@ export default function RecommendPage() {
                     </div>
                   )}
                   <ConfidenceGauge
-                    confidence={result.adjusted_confidence || result.base_model_confidence || 85}
+                    confidence={overallConfidence}
                     size={160}
                   />
+                  <p className={`text-sm font-semibold mt-2 ${getConfidenceLabel(overallConfidence).color}`}>
+                    {getConfidenceLabel(overallConfidence).label}
+                  </p>
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 text-center max-w-xs">
+                    Overall confidence based on the lower of model confidence and adjusted score.
+                  </p>
                 </Card>
 
-                {/* Top 3 Crop Recommendations */}
-                <div>
-                  <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-3">
-                    Top Crop Recommendations
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {topCrops.map((crop, idx) => (
-                      <Card
-                        key={crop.crop}
-                        variant="glass"
-                        padding="md"
-                        className="hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 animate-slideUp"
-                        style={{ animationDelay: `${idx * 100}ms` } as React.CSSProperties}
-                      >
-                        <div className="flex items-center gap-2 mb-3">
-                          <span
-                            className={`inline-flex items-center justify-center w-7 h-7 rounded-lg text-xs font-bold text-white ${
-                              idx === 0
-                                ? "bg-primary-600"
-                                : idx === 1
-                                ? "bg-primary-500"
-                                : "bg-primary-400"
-                            }`}
-                          >
-                            #{idx + 1}
-                          </span>
-                          <Badge variant={riskVariant(crop.risk)} size="sm">
-                            {crop.risk === "low" ? "Low Risk" : crop.risk === "medium" ? "Medium Risk" : "High Risk"}
-                          </Badge>
-                        </div>
-                        <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
-                          {crop.crop}
-                        </h4>
-                        <ProgressBar
-                          value={crop.confidence}
-                          size="sm"
-                          showValue
-                          animated
-                          className="mb-2"
-                        />
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-                          {crop.reason}
+                {/* Single Crop Recommendation */}
+                {result.recommended_crop && (
+                  <Card variant="glass" padding="lg" className="animate-slideUp">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Leaf size={18} className="text-primary-500" />
+                      <span className="text-xs font-medium text-primary-600 dark:text-primary-400 uppercase tracking-wider">
+                        Recommended Crop
+                      </span>
+                    </div>
+                    <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white capitalize">
+                      {result.recommended_crop}
+                    </h2>
+
+                    {/* Confidence Breakdown */}
+                    <div className="grid grid-cols-2 gap-3 mt-4">
+                      <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                        <p className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
+                          Model Confidence
                         </p>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
+                        <p className="text-xl font-bold text-slate-900 dark:text-white">
+                          {result.base_model_confidence?.toFixed(1) ?? "N/A"}%
+                        </p>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
+                          Raw ML model output score
+                        </p>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                        <p className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
+                          Adjusted Confidence
+                        </p>
+                        <p className="text-xl font-bold text-slate-900 dark:text-white">
+                          {result.adjusted_confidence?.toFixed(1) ?? "N/A"}%
+                        </p>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
+                          Composite score (model + weather + soil)
+                        </p>
+                      </div>
+                    </div>
 
-                {/* Explanation Section */}
-                {result.explanation && (
-                  <Card variant="glass" padding="md">
-                    <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-2">
-                      Recommendation Analysis
-                    </h4>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                      {result.explanation}
-                    </p>
-                  </Card>
-                )}
+                    {/* NDVI Context */}
+                    {result.ndvi_score !== null && result.ndvi_score !== undefined && (
+                      <div className="mt-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                        <div className="flex items-center gap-2">
+                          <Info size={14} className="text-slate-400" />
+                          <span className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                            NDVI Score: {result.ndvi_score.toFixed(3)} — {result.ndvi_health ?? "Unknown"}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 leading-relaxed">
+                          NDVI (Normalized Difference Vegetation Index) is derived from satellite imagery.
+                          Scores range from -1 to 1; higher values indicate healthier vegetation.
+                          This data may have a latency of several days depending on satellite overpass schedules.
+                        </p>
+                      </div>
+                    )}
 
-                {/* Parameter Summary */}
-                {result.input_parameters && (
-                  <Card variant="glass" padding="md">
-                    <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">
-                      Input Parameter Summary
-                    </h4>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {Object.entries(result.input_parameters).map(
-                        ([key, val]) => (
-                          <div
-                            key={key}
-                            className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700"
-                          >
-                            <p className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                              {key}
-                            </p>
-                            <p className="text-sm font-semibold text-slate-900 dark:text-white mt-0.5">
-                              {val}
-                            </p>
-                          </div>
-                        )
-                      )}
+                    {/* Soil Match Info */}
+                    {result.soil_match && (
+                      <div className="mt-3 flex items-center gap-2">
+                        <span className="text-xs text-slate-500 dark:text-slate-400">
+                          Soil compatibility: <strong className="text-slate-700 dark:text-slate-300">{result.soil_match}</strong>
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Why This Crop / Explanation */}
+                    {result.explanation && (
+                      <div className="mt-5 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                        <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+                          Why This Crop
+                        </h4>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                          {result.explanation}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Disclaimer */}
+                    <div className="mt-5 p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                      <div className="flex items-start gap-2">
+                        <Info size={14} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
+                            Recommendation Disclaimer
+                          </p>
+                          <p className="text-[10px] text-amber-700 dark:text-amber-400 mt-0.5 leading-relaxed">
+                            This is a ML-based advisory tool and should not replace professional agricultural judgment.
+                            Always consult with local agricultural experts, extension officers, or agronomists before
+                            making farming decisions. Actual crop performance depends on many factors beyond the
+                            parameters analyzed here, including pest pressure, irrigation practices, seed variety,
+                            and local microclimate conditions.
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </Card>
-                )}
-
-                {/* Soil Match & Weather Score */}
-                {(result.soil_match || result.weather_score !== null) && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {result.soil_match && (
-                      <Card variant="glass" padding="sm" className="flex items-center gap-3">
-                        <CheckCircle2 size={20} className="text-success shrink-0" />
-                        <div>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">
-                            Soil Match
-                          </p>
-                          <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                            {result.soil_match}
-                          </p>
-                        </div>
-                      </Card>
-                    )}
-                    {result.weather_score !== null &&
-                      result.weather_score !== undefined && (
-                        <Card variant="glass" padding="sm" className="flex items-center gap-3">
-                          <Gauge size={20} className="text-primary-500 shrink-0" />
-                          <div>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
-                              Weather Score
-                            </p>
-                            <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                              {result.weather_score}/100
-                            </p>
-                          </div>
-                        </Card>
-                      )}
-                  </div>
                 )}
               </div>
             )}
 
             {/* ERROR STATE */}
             {state === "error" && (
-              <ErrorState
-                message="Analysis Failed"
-                details={errorMsg}
-                onRetry={handleRetry}
-                retryLabel="Try Again"
-              />
+              <Card variant="glass" padding="lg">
+                {errorMsg.match(/Failed to fetch|NetworkError|ERR_CONNECTION|fetch|network|abort/i) ? (
+                  <div className="flex flex-col items-center gap-2 text-center py-4">
+                    <AlertCircle size={32} className="text-amber-500" />
+                    <p className="text-sm font-semibold text-amber-600 dark:text-amber-400">Backend is waking up...</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      The server may take up to 60 seconds to respond on first request (free-tier hosting).
+                    </p>
+                    <Button variant="outline" size="sm" className="mt-3" onClick={handleRetry}>
+                      <RefreshCw size={14} className="mr-1" />
+                      Retry Now
+                    </Button>
+                  </div>
+                ) : (
+                  <ErrorState
+                    message="Prediction Failed"
+                    details={errorMsg}
+                    onRetry={handleRetry}
+                    retryLabel="Try Again"
+                  />
+                )}
+              </Card>
             )}
           </div>
         </div>

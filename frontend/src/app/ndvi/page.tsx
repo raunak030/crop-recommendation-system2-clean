@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Satellite,
   MapPin,
@@ -10,6 +10,7 @@ import {
   Activity,
   AlertCircle,
   RefreshCw,
+  Clock,
 } from "lucide-react";
 import NdviGauge from "../../components/NdviGauge";
 import { SkeletonGauge, SkeletonCard } from "../../components/Skeleton";
@@ -25,22 +26,19 @@ import ResponseTime from "../../components/ResponseTime";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
+const NDVI_LOADING_MESSAGES = [
+  "Fetching satellite imagery...",
+  "Processing NDVI data...",
+  "Analyzing vegetation health...",
+  "Generating report...",
+];
+
 interface NdviResponse {
   ndvi_score: number;
   health_status: string;
   imagery_date?: string;
   source?: string;
 }
-
-const mockTrendData = [
-  { month: "Oct", value: 0.35 },
-  { month: "Nov", value: 0.42 },
-  { month: "Dec", value: 0.58 },
-  { month: "Jan", value: 0.63 },
-  { month: "Feb", value: 0.71 },
-  { month: "Mar", value: 0.66 },
-  { month: "Apr", value: 0.52 },
-];
 
 function getHealthColor(status: string): string {
   switch (status?.toLowerCase()) {
@@ -102,7 +100,18 @@ export default function NdviPage() {
   const [data, setData] = useState<NdviResponse | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [responseTime, setResponseTime] = useState<number | null>(null);
+  const [loadingMsgIndex, setLoadingMsgIndex] = useState(0);
   const startTimeRef = useRef<number>(0);
+
+  // Cycle loading messages
+  useEffect(() => {
+    if (state !== "loading") return;
+    setLoadingMsgIndex(0);
+    const interval = setInterval(() => {
+      setLoadingMsgIndex((prev) => (prev + 1) % NDVI_LOADING_MESSAGES.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [state]);
 
   const handleAnalyze = async () => {
     if (!lat.trim() || !lon.trim()) {
@@ -150,7 +159,7 @@ export default function NdviPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-900/50">
+    <div className="min-h-screen">
       <div className="max-w-7xl mx-auto px-4 py-6 md:py-8">
         <PageHeader
           overline="Satellite Intelligence"
@@ -198,6 +207,18 @@ export default function NdviPage() {
                 </Button>
               </div>
             </Card>
+
+            {/* Loading Messages */}
+            {state === "loading" && (
+              <div className="text-center space-y-1 mb-0">
+                <p className="text-sm text-slate-500 dark:text-slate-400 animate-pulse">
+                  {NDVI_LOADING_MESSAGES[loadingMsgIndex]}
+                </p>
+                <p className="text-xs text-slate-400 dark:text-slate-500">
+                  Fetching data from Sentinel-2
+                </p>
+              </div>
+            )}
 
             {/* NDVI Gauge + Response Time */}
             {(state === "success" && data) || state === "loading" ? (
@@ -269,12 +290,12 @@ export default function NdviPage() {
                 </h3>
                 <div className="space-y-2.5">
                   <div className="flex items-center gap-2.5 text-sm">
-                    <Calendar size={14} className="text-slate-400 shrink-0" />
+                    <Clock size={14} className="text-slate-400 shrink-0" />
                     <span className="text-slate-500 dark:text-slate-400">
                       Date:
                     </span>
                     <span className="text-slate-900 dark:text-white font-medium">
-                      {data.imagery_date || "N/A"}
+                      {data.imagery_date || "Recent"}
                     </span>
                   </div>
                   <div className="flex items-center gap-2.5 text-sm">
@@ -283,7 +304,7 @@ export default function NdviPage() {
                       Source:
                     </span>
                     <span className="text-slate-900 dark:text-white font-medium">
-                      {data.source || "N/A"}
+                      {data.source || "Sentinel-2 (via Earth Engine)"}
                     </span>
                   </div>
                   <div className="flex items-center gap-2.5 text-sm">
@@ -299,44 +320,31 @@ export default function NdviPage() {
               </Card>
             )}
 
-            {/* Historical Trend (mock CSS bars) */}
-            {state === "success" && (
-              <Card variant="glass" padding="md" className="animate-slideUp">
-                <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">
-                  Historical Trend
-                </h3>
-                <div className="flex items-end justify-between gap-2 h-32">
-                  {mockTrendData.map((item) => {
-                    const heightPercent = item.value * 100;
-                    return (
-                      <div
-                        key={item.month}
-                        className="flex-1 flex flex-col items-center gap-1"
-                      >
-                        <ProgressBar
-                          value={item.value * 100}
-                          max={100}
-                          size="lg"
-                          animated
-                          className="w-full max-w-[32px]"
-                        />
-                        <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mt-1">
-                          {item.month}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </Card>
-            )}
+            
 
             {/* Error State */}
             {state === "error" && (
-              <ErrorState
-                message={errorMsg}
-                onRetry={handleAnalyze}
-                retryLabel="Retry"
-              />
+              <Card variant="glass" padding="md">
+                {errorMsg.match(/Failed to fetch|NetworkError|ERR_CONNECTION|fetch|network|abort/i) ? (
+                  <div className="flex flex-col items-center gap-2 text-center py-4">
+                    <AlertCircle size={32} className="text-amber-500" />
+                    <p className="text-sm font-semibold text-amber-600 dark:text-amber-400">Backend is waking up...</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      The server may take up to 60 seconds to respond on first request.
+                    </p>
+                    <Button variant="outline" size="sm" className="mt-3" onClick={handleAnalyze}>
+                      <RefreshCw size={14} className="mr-1" />
+                      Retry Now
+                    </Button>
+                  </div>
+                ) : (
+                  <ErrorState
+                    message={errorMsg}
+                    onRetry={handleAnalyze}
+                    retryLabel="Retry"
+                  />
+                )}
+              </Card>
             )}
 
             {/* Idle State */}
@@ -383,13 +391,16 @@ export default function NdviPage() {
               {/* Info label */}
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
                 <div className="glass px-4 py-2 rounded-xl text-xs text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap">
-                  🛰️ Interactive Satellite Map
+                  📍 Field Location Viewer
                   {state === "success" && data && (
                     <span className="ml-2 text-primary-600 dark:text-primary-400">
                       • {lat}, {lon}
                     </span>
                   )}
                 </div>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 text-center">
+                  Visual representation. Actual satellite imagery not displayed.
+                </p>
               </div>
 
               {/* Top-left info */}

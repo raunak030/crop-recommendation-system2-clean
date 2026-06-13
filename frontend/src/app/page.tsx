@@ -34,7 +34,7 @@ const features = [
     href: "/recommend",
     color: "text-primary-600 dark:text-primary-400",
     bg: "bg-primary-50 dark:bg-primary-900/30",
-    target: "FPOs · NGOs · Government Programs",
+    target: "Farmers · FPOs · Cooperatives",
   },
   {
     icon: <Satellite size={28} />,
@@ -116,15 +116,16 @@ const infrastructure = [
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-900/50">
+    <div className="min-h-screen">
       {/* ─── Hero Section ─── */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary-100/40 via-transparent to-earth-100/30 dark:from-primary-900/20 dark:via-transparent dark:to-earth-900/20 pointer-events-none" />
         <div className="max-w-6xl mx-auto px-4 pt-20 pb-16 md:pt-28 md:pb-24 relative z-10">
           <div className="flex flex-col items-center text-center max-w-3xl mx-auto">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-400 text-xs font-medium mb-6 border border-primary-200 dark:border-primary-800">
+            {/* Beta Badge */}
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 text-xs font-medium mb-4 border border-amber-200 dark:border-amber-800">
               <BarChart3 size={14} />
-              Enterprise Agri Intelligence Platform
+              Beta — Enterprise Agri Intelligence Platform
             </div>
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-slate-900 dark:text-white leading-[1.1]">
               Data-Driven Decisions for{" "}
@@ -134,7 +135,7 @@ export default function LandingPage() {
             </h1>
             <p className="mt-5 text-lg text-slate-500 dark:text-slate-400 max-w-xl leading-relaxed">
               AI-powered crop intelligence platform serving agricultural organizations,
-              government programs, and agri-businesses with satellite-driven insights
+              agri-businesses, and cooperatives with satellite-driven insights
               and machine learning predictions.
             </p>
 
@@ -144,10 +145,10 @@ export default function LandingPage() {
                 <Building2 size={12} /> FPOs
               </span>
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-medium border border-slate-200 dark:border-slate-700">
-                <Landmark size={12} /> NGOs
+                <Users size={12} /> Farmers
               </span>
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-medium border border-slate-200 dark:border-slate-700">
-                <Users size={12} /> Government Programs
+                <Landmark size={12} /> Cooperatives
               </span>
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-medium border border-slate-200 dark:border-slate-700">
                 <Factory size={12} /> Agri-Business
@@ -162,38 +163,8 @@ export default function LandingPage() {
                 Explore Platform
                 <ArrowRight size={16} />
               </Link>
-              <a
-                href="https://github.com/your-org/smart-crop-engine#readme"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 font-medium text-sm transition-all"
-              >
-                <Satellite size={16} />
-                View Documentation
-              </a>
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* ─── Stats Bar ─── */}
-      <section className="border-y border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50">
-        <div className="max-w-5xl mx-auto px-4 py-8 grid grid-cols-2 md:grid-cols-4 gap-6">
-          {[
-            { label: "Recommendations", value: "10K+" },
-            { label: "NDVI Analyses", value: "5K+" },
-            { label: "Fertilizer Plans", value: "3K+" },
-            { label: "Organizations Served", value: "200+" },
-          ].map((stat) => (
-            <div key={stat.label} className="text-center">
-              <p className="text-2xl md:text-3xl font-bold text-primary-600 dark:text-primary-400">
-                {stat.value}
-              </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                {stat.label}
-              </p>
-            </div>
-          ))}
         </div>
       </section>
 
@@ -238,7 +209,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── How It Works ─── */}
-      <section className="border-t border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50">
+      <section className="border-t border-slate-200 dark:border-slate-800">
         <div className="max-w-5xl mx-auto px-4 py-16 md:py-20">
           <div className="text-center mb-10">
             <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">
@@ -315,7 +286,7 @@ export default function LandingPage() {
             Ready to Scale Your Agricultural Operations?
           </h2>
           <p className="text-slate-500 dark:text-slate-400 text-sm max-w-md mx-auto mb-6">
-            Join 200+ organizations leveraging AI-powered crop intelligence.
+            Leverage AI-powered crop intelligence for your organization.
             Start with a free recommendation analysis — no commitment required.
           </p>
           <Link

@@ -24,7 +24,7 @@ const faqItems: FAQItem[] = [
   {
     question: "How accurate are your recommendations?",
     answer:
-      "The base ML model achieves strong accuracy on standard crop prediction benchmarks. When combined with NDVI fusion, soil compatibility, and weather data, the adjusted confidence score provides a more comprehensive reliability indicator — typically in the 85-95% range for well-defined soil and climate conditions. We always display both the base confidence and the adjusted confidence so you can assess the recommendation quality.",
+      "The base ML model produces a probability-based confidence score derived from the Random Forest classifier. This is combined with NDVI data (20% weight), soil compatibility (10%), and weather conditions (5%) to produce an adjusted composite score. We always display both the base model confidence and the adjusted score so you can assess recommendation quality. Typical base confidence ranges from 30-50%, with the adjusted score reaching 40-55% depending on data quality.",
   },
   {
     question: "Do I need an account to use the platform?",
@@ -39,7 +39,7 @@ const faqItems: FAQItem[] = [
   {
     question: "How is fertilizer advice calculated?",
     answer:
-      "The fertilizer advisor compares your soil NPK (Nitrogen, Phosphorus, Potassium) levels against optimal ranges for your selected crop. Based on the detected deficits, it recommends a specific fertilizer blend with the right nutrient composition to address the shortfall. The recommendation includes the fertilizer name, nutrient composition percentages, application rate in kg/ha, and a detailed explanation of why that particular fertilizer is suitable for your crop and soil condition.",
+      "The fertilizer advisor compares your soil NPK (Nitrogen, Phosphorus, Potassium) levels against optimal ranges for your selected crop. Based on detected deficits, it recommends a specific fertilizer type and explains why that fertilizer addresses the shortfall. The recommendation includes the fertilizer name, NPK deficit analysis, crop optimal levels comparison, and a plain-language reason for the suggestion.",
   },
   {
     question: "Is my data stored?",
@@ -49,7 +49,7 @@ const faqItems: FAQItem[] = [
   {
     question: "What technologies power this platform?",
     answer:
-      "The platform is built on a modern full-stack architecture: the backend uses FastAPI (Python) with Scikit-Learn for machine learning, Google Earth Engine for satellite data, and is deployed on Render. The frontend is built with Next.js (React), styled with Tailwind CSS, and deployed on Vercel. Satellite imagery is sourced from ESA's Sentinel-2 mission. Key icons and UI components use the Lucide icon library. The project demonstrates end-to-end integration of ML inference, geospatial analysis, and responsive web design.",
+      "The platform is built on a modern full-stack architecture: the backend uses FastAPI (Python) with Scikit-Learn for machine learning, Google Earth Engine for satellite data, and is deployed on Render. The frontend is built with Next.js (React), styled with Tailwind CSS, and deployed on Vercel. Satellite imagery is sourced from ESA's Sentinel-2 mission.",
   },
 ];
 
@@ -61,7 +61,7 @@ export default function FAQPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-900/50">
+    <div className="min-h-screen">
       <div className="max-w-3xl mx-auto px-4 py-6 md:py-8 space-y-6">
         {/* Header */}
         <PageHeader

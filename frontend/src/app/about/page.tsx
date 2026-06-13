@@ -39,7 +39,7 @@ const capabilities = [
 
 export default function AboutPage() {
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-900/50">
+    <div className="min-h-screen">
       <div className="max-w-5xl mx-auto px-4 py-6 md:py-8 space-y-8">
         {/* Header */}
         <PageHeader
@@ -55,7 +55,7 @@ export default function AboutPage() {
             </div>
             <div>
               <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-3">
-                Our Mission
+                Built for Real Agriculture
               </h2>
               <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                 Agriculture is the backbone of our civilization, yet many farmers still rely on 
@@ -99,19 +99,19 @@ export default function AboutPage() {
           </div>
         </div>
 
-        {/* Project Section */}
+        {/* Capabilities Section */}
         <Card variant="glass" padding="lg">
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 rounded-2xl bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center shrink-0">
-              <Users size={24} className="text-primary-600 dark:text-primary-400" />
+              <Leaf size={24} className="text-primary-600 dark:text-primary-400" />
             </div>
             <div>
               <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-3">
-                Built as a Portfolio Project
+                Platform Capabilities
               </h2>
               <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
-                Smart Crop Engine is a full-stack portfolio project demonstrating modern 
-                software engineering practices across the entire development stack:
+                Smart Crop Engine integrates machine learning, satellite data, and environmental
+                sensing into a unified platform that delivers actionable agricultural intelligence:
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {capabilities.map((cap, idx) => (
