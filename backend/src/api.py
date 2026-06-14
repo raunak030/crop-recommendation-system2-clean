@@ -8,6 +8,7 @@ from typing import Optional
 
 from .ndvi_service import get_ndvi_for
 from .fertilizer_service import recommend_fertilizer
+from .rule_engine import compute_top_crops, CROP_REQUIREMENTS
 
 app = FastAPI()
 
@@ -310,6 +311,63 @@ def predict(data: CropInput):
         },
         "explanation": " ".join(explanation),
     }
+
+# === v2 Predict — Smart Crop Engine v1.5 ===
+
+@app.post("/api/v2/predict")
+def predict_v2(data: CropInput):
+    """API v2: Top-5 enriched crop recommendations.
+
+    Uses rule_engine to compute suitability scores, uncertainty, and
+    human-readable explanations for the top 5 crops.
+    """
+    input_df = pd.DataFrame([{
+        'N': data.N,
+        'P': data.P,
+        'K': data.K,
+        'temperature': data.temperature,
+        'humidity': data.humidity,
+        'ph': data.ph,
+        'rainfall': data.rainfall,
+    }])
+
+    probabilities = model.predict_proba(input_df)[0]
+    class_names = model.classes_.tolist()
+
+    # Use list of probabilities (already in correct order from predict_proba)
+    probs_list = probabilities.tolist()
+
+    top_crops = compute_top_crops(
+        probabilities=probs_list,
+        class_names=class_names,
+        soil_type=data.soil_type,
+        input_n=data.N,
+        input_p=data.P,
+        input_k=data.K,
+        input_temp=data.temperature,
+        input_humidity=data.humidity,
+        input_ph=data.ph,
+        input_rainfall=data.rainfall,
+        top_n=5,
+    )
+
+    return {
+        "model": "RandomForest",
+        "top_crops": top_crops,
+        "input_parameters": {
+            "N": data.N,
+            "P": data.P,
+            "K": data.K,
+            "temperature": data.temperature,
+            "humidity": data.humidity,
+            "ph": data.ph,
+            "rainfall": data.rainfall,
+            "soil_type": data.soil_type,
+            "lat": data.lat,
+            "lon": data.lon,
+        },
+    }
+
 
 # === Versioned API routes (/api/v1/*) ===
 
