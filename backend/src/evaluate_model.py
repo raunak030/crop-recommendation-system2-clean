@@ -20,9 +20,9 @@ from sklearn.metrics import accuracy_score, confusion_matrix, classification_rep
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODEL_PATH = os.path.join(PROJECT_ROOT, 'models', 'crop_model.pkl')
 DATA_PATH  = os.path.join(PROJECT_ROOT, 'data', 'Crop_recommendation.csv')
-OUT_DIR    = os.path.join(PROJECT_ROOT, '..', 'docs')        # top-level docs/
-CSV_OUT    = os.path.join(PROJECT_ROOT, '..', 'classification_report.csv')
-PNG_OUT    = os.path.join(PROJECT_ROOT, '..', 'confusion_matrix.png')
+OUT_DIR    = os.path.join(PROJECT_ROOT, 'reports')
+CSV_OUT    = os.path.join(PROJECT_ROOT, 'reports', 'classification_report.csv')
+PNG_OUT    = os.path.join(PROJECT_ROOT, 'reports', 'confusion_matrix.png')
 
 os.makedirs(OUT_DIR, exist_ok=True)
 

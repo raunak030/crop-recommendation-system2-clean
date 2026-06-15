@@ -8,7 +8,6 @@ import {
   Sprout,
   Satellite,
   FlaskConical,
-  Settings,
   Info,
   HelpCircle,
   Mail,
@@ -23,7 +22,6 @@ const navLinks = [
   { href: "/about", label: "About", mobileIcon: Info },
   { href: "/faq", label: "FAQ", mobileIcon: HelpCircle },
   { href: "/contact", label: "Contact", mobileIcon: Mail },
-  { href: "/admin", label: "Admin", mobileIcon: Settings },
 ];
 
 export default function Navbar() {

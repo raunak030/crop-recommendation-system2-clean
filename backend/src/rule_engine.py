@@ -733,15 +733,19 @@ def compute_top_crops(
         List of dicts sorted by model_probability descending, each with:
           - crop_name, model_probability, suitability_score, uncertainty_score, explanation
     """
-    # Create (probability, class_name) pairs and sort descending
-    scored = [(probabilities[i], class_names[i]) for i in range(len(class_names))]
-    scored.sort(key=lambda x: x[0], reverse=True)
-
     # Compute global uncertainty from all probabilities
     uncertainty = uncertainty_score(probabilities)
 
-    results = []
-    for rank, (prob, crop_name) in enumerate(scored[:top_n], start=1):
+    # Fix 1 & Fix 2: Compute suitability for ALL crops, apply probability floor, use blended ranking
+    scored = []
+    for i in range(len(class_names)):
+        prob = probabilities[i]
+        crop_name = class_names[i]
+
+        # Fix 2: Probability floor — skip crops with <1% model probability
+        if prob < 0.01:
+            continue
+
         suit = suitability_score(
             ml_probability=prob,
             soil_type=soil_type,
@@ -755,22 +759,70 @@ def compute_top_crops(
             input_rainfall=input_rainfall,
         )
 
-        expl = explanation_engine(
+        # Fix 1: Blended ranking score — 50% model probability, 50% normalized suitability
+        ranking_score = 0.5 * prob + 0.5 * (suit["total"] / 100.0)
+
+        scored.append({
+            "crop_name": crop_name,
+            "model_probability": prob,
+            "ranking_score": ranking_score,
+            "suitability_score": suit["total"],
+            "suitability_components": suit["components"],
+            "coffee_penalty_applied": suit["coffee_penalty_applied"],
+            "suit": suit,
+        })
+
+    # Guard: if fewer than 1 crop remains after probability filter, keep highest-probability crop
+    if len(scored) < 1:
+        max_prob = max(probabilities)
+        max_idx = probabilities.index(max_prob)
+        crop_name = class_names[max_idx]
+        suit = suitability_score(
+            ml_probability=max_prob,
+            soil_type=soil_type,
             crop=crop_name,
+            input_n=input_n,
+            input_p=input_p,
+            input_k=input_k,
+            input_temp=input_temp,
+            input_humidity=input_humidity,
+            input_ph=input_ph,
+            input_rainfall=input_rainfall,
+        )
+        ranking_score = 0.5 * max_prob + 0.5 * (suit["total"] / 100.0)
+        scored.append({
+            "crop_name": crop_name,
+            "model_probability": max_prob,
+            "ranking_score": ranking_score,
+            "suitability_score": suit["total"],
+            "suitability_components": suit["components"],
+            "coffee_penalty_applied": suit["coffee_penalty_applied"],
+            "suit": suit,
+        })
+
+    # Sort by blended ranking score descending (Fix 1)
+    scored.sort(key=lambda x: x["ranking_score"], reverse=True)
+
+    # Build results from top_n
+    results = []
+    for rank, entry in enumerate(scored[:top_n], start=1):
+        expl = explanation_engine(
+            crop=entry["crop_name"],
             rank=rank,
-            ml_probability=prob,
-            suit_result=suit,
+            ml_probability=entry["model_probability"],
+            suit_result=entry["suit"],
             input_temp=input_temp,
             input_rainfall=input_rainfall,
             soil_type=soil_type,
         )
 
         results.append({
-            "crop_name": crop_name,
-            "model_probability": round(prob, 4),
-            "suitability_score": suit["total"],
-            "suitability_components": suit["components"],
-            "coffee_penalty_applied": suit["coffee_penalty_applied"],
+            "crop_name": entry["crop_name"],
+            "model_probability": round(entry["model_probability"], 4),
+            "ranking_score": round(entry["ranking_score"], 4),
+            "suitability_score": entry["suitability_score"],
+            "suitability_components": entry["suitability_components"],
+            "coffee_penalty_applied": entry["coffee_penalty_applied"],
             "uncertainty_score": {
                 "label": uncertainty["label"],
                 "raw": uncertainty["raw"],

@@ -184,7 +184,7 @@ export default function FertilizerPage() {
               {/* NPK Inputs */}
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2.5">
-                  Current NPK Levels (ppm)
+                  Current NPK Levels (kg/ha)
                 </p>
                 <div className="grid grid-cols-3 gap-3">
                   {(["N", "P", "K"] as const).map((nutrient) => (
@@ -200,7 +200,7 @@ export default function FertilizerPage() {
                       type="number"
                       min="0"
                       max="200"
-                      unit="ppm"
+                      unit="kg/ha"
                       value={form[nutrient]}
                       onChange={(val) => handleChange(nutrient, val)}
                       disabled={state === "loading"}
@@ -276,10 +276,10 @@ export default function FertilizerPage() {
                             Nutrient
                           </th>
                           <th className="text-right px-2 py-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                            Current (ppm)
+                            Current (kg/ha)
                           </th>
                           <th className="text-right px-2 py-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                            Optimal (ppm)
+                            Optimal (kg/ha)
                           </th>
                           <th className="text-right pl-2 py-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                             Deficit
@@ -338,7 +338,7 @@ export default function FertilizerPage() {
                               {nutrient === "N" ? "Nitrogen" : nutrient === "P" ? "Phosphorus" : "Potassium"}
                             </span>
                             <span className="text-xs text-slate-500 dark:text-slate-400">
-                              {current} / {optimalVal} ppm
+                              {current} / {optimalVal} kg/ha
                             </span>
                           </div>
                           <ProgressBar

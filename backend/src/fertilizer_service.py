@@ -71,7 +71,11 @@ def recommend_fertilizer(crop: str, N: float, P: float, K: float) -> dict:
         return {
             "fertilizer": "Unknown — crop not found",
             "reason": f"NPK requirements for '{crop}' are not in our database",
-            "npk_deficit": {"N": 0, "P": 0, "K": 0},
+            "npk_deficit": [
+                {"nutrient": "N", "current": round(N, 1), "optimal": 0, "deficit": 0},
+                {"nutrient": "P", "current": round(P, 1), "optimal": 0, "deficit": 0},
+                {"nutrient": "K", "current": round(K, 1), "optimal": 0, "deficit": 0},
+            ],
             "crop_optimal": {},
         }
 
@@ -82,14 +86,16 @@ def recommend_fertilizer(crop: str, N: float, P: float, K: float) -> dict:
     deficit_P = max(0.0, optimal["P"] - P)
     deficit_K = max(0.0, optimal["K"] - K)
 
-    deficits = {"N": round(deficit_N, 1), "P": round(deficit_P, 1), "K": round(deficit_K, 1)}
-
     # Determine which nutrient is most deficient
     if deficit_N <= 0 and deficit_P <= 0 and deficit_K <= 0:
         return {
             "fertilizer": "No fertilizer needed",
             "reason": "Soil NPK levels meet or exceed crop requirements",
-            "npk_deficit": deficits,
+            "npk_deficit": [
+                {"nutrient": "N", "current": round(N, 1), "optimal": optimal["N"], "deficit": 0},
+                {"nutrient": "P", "current": round(P, 1), "optimal": optimal["P"], "deficit": 0},
+                {"nutrient": "K", "current": round(K, 1), "optimal": optimal["K"], "deficit": 0},
+            ],
             "crop_optimal": optimal,
         }
 
@@ -140,7 +146,11 @@ def recommend_fertilizer(crop: str, N: float, P: float, K: float) -> dict:
         return {
             "fertilizer": "No suitable fertilizer found",
             "reason": "Cannot match deficits to known fertilizers",
-            "npk_deficit": deficits,
+            "npk_deficit": [
+                {"nutrient": "N", "current": round(N, 1), "optimal": optimal["N"], "deficit": round(deficit_N, 1)},
+                {"nutrient": "P", "current": round(P, 1), "optimal": optimal["P"], "deficit": round(deficit_P, 1)},
+                {"nutrient": "K", "current": round(K, 1), "optimal": optimal["K"], "deficit": round(deficit_K, 1)},
+            ],
             "crop_optimal": optimal,
         }
 
@@ -156,9 +166,31 @@ def recommend_fertilizer(crop: str, N: float, P: float, K: float) -> dict:
     reason_parts = [f"{'/'.join(reasons)}"]
     reason_parts.append(" — " + "; ".join(deficit_parts))
 
+    # Build array format for frontend consumption
+    deficit_array = [
+        {
+            "nutrient": "N",
+            "current": round(N, 1),
+            "optimal": optimal["N"],
+            "deficit": round(deficit_N, 1),
+        },
+        {
+            "nutrient": "P",
+            "current": round(P, 1),
+            "optimal": optimal["P"],
+            "deficit": round(deficit_P, 1),
+        },
+        {
+            "nutrient": "K",
+            "current": round(K, 1),
+            "optimal": optimal["K"],
+            "deficit": round(deficit_K, 1),
+        },
+    ]
+
     return {
         "fertilizer": best_fertilizer["name"],
         "reason": "".join(reason_parts),
-        "npk_deficit": deficits,
+        "npk_deficit": deficit_array,
         "crop_optimal": optimal,
     }
