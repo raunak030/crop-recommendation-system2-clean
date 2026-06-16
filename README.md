@@ -14,15 +14,25 @@ Enter your soil parameters (NPK, pH, temperature, humidity, rainfall) and get an
 
 ## 📸 Screenshots
 
-> *Screenshots coming soon — deploy the app to see it in action!*
+### 🏠 Home
 
-| Feature | Preview |
-|---------|---------|
-| 🏠 **Home / Prediction Form** | ![Screenshot placeholder] |
-| 📊 **Results with Confidence** | ![Screenshot placeholder] |
-| 🛰️ **NDVI Health Display** | ![Screenshot placeholder] |
-| 🌱 **Fertilizer Recommendation** | ![Screenshot placeholder] |
+![Home](assets/screenshots/home.png)
 
+### 🌾 Crop Recommendation
+
+![Crop Recommendation](assets/screenshots/crop-recommendation.png)
+
+### 🌱 Fertilizer Recommendation
+
+![Fertilizer](assets/screenshots/fertilizer.png)
+
+### 🛰️ NDVI Analysis
+
+![NDVI](assets/screenshots/ndvi.png)
+
+### 📱 Mobile View
+
+![Mobile](assets/screenshots/mobile-view.png)
 ---
 
 ## ✨ Features
